@@ -4,25 +4,34 @@ bot = telebot.TeleBot("456403564:AAFLQjaNSumXGcd9hl_nEbCZyvIFdNmFCHk")
 
 step = 0
 
-global office_words
 office_words = ["ОФИС", "ОФИСА" , "ОФИСНОЕ", "ОФИСНЫЕ"]
 coworking_words = ["КОВОРКИНГ"]
+event_words = ["МЕРОПРИЯТИЕ", "ПРЕЗЕНТАЦИЯ","КОНФЕРЕНЦИЯ","ПРЕЗЕНТАЦИЮ","КОНФЕРЕНЦИЮ","ТРЕНИНГ","КУРСЫ","ПЛОЩАДКА","ПОМЕЩЕНИЕ","ПЛОЩАДКУ","ПЛОЩАДКИ","КОРПОРАТИВНАЯ","ВЕЧЕРИНКА"]
+date_words = ["ЯНВАРЯ","ФЕВРАЛЯ","МАРТА","АПРЕЛЯ","МАЯ","ИЮНЯ","ИЮЛЯ","АВГУСТА","СЕНТЯБРЯ","ОКТЯБРЯ","НОЯБРЯ","ДЕКАБРЯ"]
+
+
 yes_words = ["ДА","ХОЧУ","БУДУ","НАВЕРНОЕ","ВОЗМОЖНО"]
 
-global answers
+support_chat_id = "-239908850" # id чата куда шлем заявки
 
 answers = {
     "office_1": "Я покажу что у нас есть, сколько человек у вас в команде ?",
     "office_2": "У нас офисы от 4 человек, показать тебе офисы на четверых или рассказать о коворкинге ?",
     "office_3": "Вот что у нас есть на четверых",
-    "coworking_1": "Мы предлагаем плавающее рабочее место от 500 рублей в день, хочешь забронировать ?"
-    "coworking_2": "Оставь телефон и мы тебе перезвоним"
+    "office_4": "Вот что у нас есть на пятерых",
+    "coworking_1": "Мы предлагаем плавающее рабочее место от 500 рублей в день, хочешь забронировать ?",
+    "coworking_2": "Оставь телефон и мы тебе перезвоним",
+    "coworking_3": "Спасибо, жди звонка!",
+    "event_1": "Мы можем вместить до 150 человек - сколько вас будет ?",
+    "event_2": "круто, когда планируете мероприятие ?",
+    "event_3": "сколько часов потребуется ?",
 }
 
 urls = {
     "office_1": "",
     "office_2": "",
     "office_3": "http://tablica.work/#office#!/tproduct/34756154-1507644732627", # офис на четверых
+    "office_4": "http://tablica.work/#!/tproduct/34756154-1498486301712", # офис на пятерых
     "coworking_1": ""
 }
 
@@ -52,6 +61,7 @@ def free_text(message: telebot.types.Message):
     print(text)
     text = text.upper()
     print(text)
+    print(message.chat.id)
 #splitting text into keywords
 
     keywords = [x for x in text.split()]
@@ -61,6 +71,7 @@ def free_text(message: telebot.types.Message):
     print(step)
 
 
+# обрабатываем запрос офиса
 
     if step == 0 and bool(set(keywords) & set(office_words)):
         step = "office_1"
@@ -82,11 +93,27 @@ def free_text(message: telebot.types.Message):
     if step == "office_1":
         if keywords[0].isdigit():
             number_of_empl = int(keywords[0])
-            if number_of_empl = 4:
+            if number_of_empl == 4:
                 step = "office_3"
                 answer = answers[step]
                 bot.send_message(message.chat.id, answer)
-                bot.send_message(message.chat.id, "http://tablica.work/#office#!/tproduct/34756154-1507644732627")
+                answer = urls[step]
+                bot.send_message(message.chat.id, answer)
+
+    # 5 - предложим офис на пятерых
+    if step == "office_1":
+        if keywords[0].isdigit():
+            number_of_empl = int(keywords[0])
+            if number_of_empl == 4:
+                step = "office_4"
+                answer = answers[step]
+                bot.send_message(message.chat.id, answer)
+                answer = urls[step]
+                bot.send_message(message.chat.id, answer)
+
+    # ну и так далее тут дописать офисы
+
+
 
     # если на шаге office2 клиент все же хочет посмотреть офисы - показываем офисы на четверых
     if step == "office_2" and bool(set(keywords) & set(office_words)):
@@ -96,7 +123,10 @@ def free_text(message: telebot.types.Message):
         answer = urls[step]
         bot.send_message(message.chat.id, answer)
 
-    if step == "office_3" and bool(set(keywords) & set(coworking_words)):
+    # а если таки решил что интереснее коворкинг - разговариваем с ним о коворкинге и стреляем телефон. Контакт отправляем в специальный
+    # чатик
+
+    if step == "office_2" and bool(set(keywords) & set(coworking_words)):
         step = "coworking_1"
         answer = answers[step]
         bot.send_message(message.chat.id, answer)
@@ -106,7 +136,39 @@ def free_text(message: telebot.types.Message):
         answer = answers[step]
         bot.send_message(message.chat.id, answer)
 
+    if step == "coworking_2" and keywords[0][1:].isdigit():
+        step = "coworking_3"
+        opportunity_contact_dict = {"text" : message.text , "user_id": message.chat.id, "step" : step}
+        opportunity_contact_text = '\n'.join(['%s:: %s' % (key, value) for (key, value) in opportunity_contact_dict.items()])
+        bot.send_message(support_chat_id, opportunity_contact_text)
+        answer = answers[step]
+        bot.send_message(message.chat.id, answer)
 
+    # обрабатываем запрос мероприятия
+
+    if step == 0 and bool(set(keywords) & set(event_words)):
+        step = "event_1"
+        answer = answers[step]
+        bot.send_message(message.chat.id, answer)
+
+    if step == "event_1" and keywords[0].isdigit():
+        if int(keywords[0]) < 151:
+            event_participants = message.text
+            step = "event_2"
+            answer = answers[step]
+            bot.send_message(message.chat.id, answer)
+
+    if step == "event_2" and bool(set(keywords) & set(date_words)):
+        event_date = message.text
+        step = "event_3"
+        answer = answers[step]
+        bot.send_message(message.chat.id, answer)
+
+    if step == "event_3" and bool(set(keywords) & set(date_words)):
+        event_date = message.text
+        step = "event_4"
+        answer = answers[step]
+        bot.send_message(message.chat.id, answer)
 
 
     #bot.send_message(message.chat.id, url)
